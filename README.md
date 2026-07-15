@@ -1,59 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🧾 Enterprise GST Invoice Generator (Laravel v12)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A robust, full-stack MVC web application engineered in Laravel v12 designed to automate, calculate, and generate GST-compliant commercial invoices. The system features complete CRUD modules for inventory and client management, enterprise authentication, and a dynamic tax routing engine that programmatically splits taxes into CGST/SGST or IGST based on location constraints.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Key Features & Modules
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 1. Authentication & Secure Dashboard
+* Protected state routes (`/dashboard`) utilizing Laravel's native authentication scaffolding and `auth` middleware.
+* Secure multi-tenant architecture checking customer and invoice ownership against the currently logged-in user session.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 2. Company Settings Management
+* Single-entry system configuration mapping company metadata (`name`, `GSTIN`, `state`, `address`, `phone`).
+* Profile file-upload pipeline routing corporate logos directly to `public/uploads/company/`.
+* Strict system routing constraints enforcing a single-instance profile configuration.
 
-## Learning Laravel
+### 3. Client & Inventory CRUD
+* **Customer Management:** Comprehensive tracking of database records including `name`, `email`, `phone`, `address`, `gst_number`, and `state`.
+* **Product Catalog:** Inventory manager tracking `name`, base `price`, `stock` thresholds, and distinct tax brackets via `gst_percent`.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 4. Dynamic GST Calculation Engine
+* **Intra-State Engine:** Automatically evaluates if `Company State == Customer State` to split the line-item tax threshold evenly into **CGST** and **SGST**.
+* **Inter-State Engine:** Automatically routes the full tax threshold under **IGST** if states differ.
+* **Auto-Sequence Generation:** Programmatically structures unique billing references using the format: `INV-{YYYY}-{database_sequence_id}`.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 5. Document Export Rendering
+* Integrated `barryvdh/laravel-dompdf` wrapper engine parsing specialized layout structures into print-ready PDF binary downloads (`/invoices/{id}/pdf`).
+* Clean Blade presentation styles utilizing Bootstrap and print-media css variants for seamless physical printing.
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## ⚙️ Core Tax Routing Logic
 
-### Premium Partners
+When processing transactions via `InvoiceController@store`, the application automatically calculates line-item breakdowns using the following tax rule matrices:
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```text
+                     [Invoice Submission]
+                              |
+               Is Company State == Customer State?
+               /                                 \
+            (YES)                                (NO)
+             /                                     \
+   [Intra-State Branch]                     [Inter-State Branch]
+   - Split tax into CGST + SGST             - Route entire tax to IGST
+   - cgst_percent = total / 2               - igst_percent = total
+   - sgst_percent = total / 2               - igst_amount  = subtotal * tax%
+```
 
-## Contributing
+### Formula Definitions:
+* **Line Item Subtotal:**  
+  \[\text{Line Subtotal} = \text{Price} \times \text{Quantity}\]
+* **Cumulative Totals:**  
+  \[\text{Grand Total} = \sum(\text{Line Subtotal}) + \sum(\text{CGST Amount} + \text{SGST Amount} + \text{IGST Amount})\]
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## 🗄️ Relational Schema Mapping
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+The database layer consists of 5 core system tables linked via Eloquent ORM:
 
-## Security Vulnerabilities
+```text
+ ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+ │   Customer   │───►   │   Invoice    │───►   │ InvoiceItem  │
+ └──────────────┘       └──────────────┘       └──────────────┘
+        ▲                      ▲                      │
+        │                      │                      ▼
+  (belongsTo)             (belongsTo)          ┌──────────────┐
+        │                      │               │   Product    │
+ ┌──────────────┐       ┌──────────────┐       └──────────────┘
+ │     User     │       │CompanySetting│
+ └──────────────┘       └──────────────┘
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+* **`Customer`:** `hasMany` `Invoice` records.
+* **`Invoice`:** `belongsTo` `Customer`, `hasMany` `InvoiceItem` records.
+* **`InvoiceItem`:** `belongsTo` `Product` to extract baseline catalog specifications. Stores individual row snapshots (`cgst_percent`, `cgst_amount`, `sgst_percent`, `sgst_amount`, `igst_percent`, `igst_amount`, and unified `total_amount`).
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 🛠️ Tech Stack & Architecture
+
+* **Backend Engine:** Laravel v12 (PHP)
+* **Database Mapping:** Eloquent ORM (Resource Controllers, Migrations)
+* **Asset Pipeline:** Vite + Tailwind CSS
+* **View Layer:** Blade Templates + Bootstrap UI
+* **PDF Compiler:** dompdf (`barryvdh/laravel-dompdf`)
+
+---
+
+## 🏃 Getting Started & Local Installation
+
+### Prerequisites
+* PHP >= 8.2
+* Composer
+* Node.js & NPM
+* MySQL or PostgreSQL Database
+
+### Installation Steps
+
+1. **Clone the project codebase:**
+   ```bash
+   git clone https://github.com
+   cd YOUR_REPO_NAME
+   ```
+
+2. **Install core application package dependencies:**
+   ```bash
+   composer install
+   npm install
+   ```
+
+3. **Configure Environment Variables:**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+   *Open `.env` and set your local database connection values (`DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`).*
+
+4. **Run Database Migrations:**
+   ```bash
+   php artisan migrate
+   ```
+
+5. **Build Frontend Assets & Launch Web Servers:**
+   ```bash
+   # Compile asset pipeline
+   npm run dev
+
+   # Boot Laravel engine (in a separate terminal)
+   php artisan serve
+   
