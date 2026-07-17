@@ -13,7 +13,7 @@
                     <div class="text-muted" style="font-size:13px;">{{ date('d-m-Y', strtotime($invoice->invoice_date)) }}</div>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('invoices.pdf', $invoice->id) }}" class="btn btn-danger">Download PDF</a>
+
                     <button type="button" onclick="openInvoicePrint()" class="btn btn-primary">Print</button>
 
                 </div>

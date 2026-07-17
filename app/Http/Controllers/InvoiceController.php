@@ -215,18 +215,5 @@ class InvoiceController extends Controller
 
         return view('invoices.show', compact('invoice','company'));
     }
-    public function downloadPdf($id)
-    {
-        $invoice = Invoice::where('user_id', Auth::id())
-                    ->with(['customer', 'items.product'])
-                    ->findOrFail($id);
-                    $company = CompanySetting::where(
-            'user_id',
-            Auth::id()
-        )->first();
 
-        $pdf = Pdf::loadView('invoices.pdf', compact('invoice','company'));
-
-        return $pdf->download($invoice->invoice_no . '.pdf');
-    }
 }
